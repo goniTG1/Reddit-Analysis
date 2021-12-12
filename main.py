@@ -50,6 +50,7 @@ list_cities_countries = [['Paris', 'France'],['London', 'UK',],['Bucharest', 'Ro
 
 list_local = [['Paris', 'France'],['London', 'UK',],['Dublin','Ireland']]
 
+st.set_option('deprecation.showPyplotGlobalUse', False)
 st.set_page_config(
     page_title="Analysis of Cities with Reddit",
     page_icon="🧊",
@@ -106,6 +107,8 @@ def write():
     if local == 'Yes':
         city_reddit = st.selectbox('REDDIT CITY:', [f'{elem[0]}, {elem[1]}' for elem in list_local])
 
+    print(city_reddit)
+
     if selection == 'MAP':
         # center on Liberty Bell
         m = folium.Map(location=[50, 15],
@@ -144,6 +147,9 @@ def write():
 
         df_style = front.style_df(df)
 
+        st.markdown('')
+        st.markdown(f'<b>Average polarity for {city_reddit}: {df["Polarity"].mean()}</b>', unsafe_allow_html=True)
+        st.markdown(f'<b>Average subjectivity for {city_reddit}: {df["Subjectivity"].mean()}</b>',unsafe_allow_html=True)
         st.markdown('')
         st.dataframe(df_style)
         st.markdown('')
@@ -238,25 +244,92 @@ def write():
 
     if selection == 'Machine Learning':
 
-        plt.hist(prediction_df["popularity"], alpha=0.5, bins=20, edgecolor="black")
+        if local == 'Yes':
+            if city_reddit.split(',')[0] == 'Paris':
+                df = pd.read_csv('df_paris.csv', keep_default_na=False);
+                df = df.where(pd.notnull(df), None)
+            if city_reddit.split(',')[0] == 'Dublin':
+                df = pd.read_csv('df_dublin.csv', keep_default_na=False);
+                df = df.where(pd.notnull(df), None)
+            if city_reddit.split(',')[0] == 'London':
+                df = pd.read_csv('df_london.csv', keep_default_na=False);
+                df = df.where(pd.notnull(df), None)
+        elif local == 'No':
+            df = api_ricardi.get_df(sel_type, city_reddit)
+        df["media"] = df['media'].apply(lambda x: isinstance(x, dict))
+        df["selftext"] = df['selftext'].apply(lambda x: len(x) > 0)
+        df["title_length"] = df["title"].apply(lambda x: len(x.split()))
+        df = df.drop(["title"], axis=1)
+        dummy = pd.get_dummies(df["media"])
+        dummy = dummy.rename(columns={True: "Media"})
+        dummy2 = pd.get_dummies(df["selftext"])
+        dummy2 = dummy2.rename(columns={True: "Selftext"})
+        dummy3 = pd.get_dummies(df["Verified user"])
+        dummy3 = dummy3.rename(columns={True: "Verified user"})
+
+        def int_or_none(x):
+            if x == '':
+                return 0
+            else:
+                return float(x)
+        df['gilded'] = df['gilded'].apply(int_or_none)
+        df['downs'] = df['downs'].apply(int_or_none)
+        df['total_awards_received'] = df['total_awards_received'].apply(int_or_none)
+        df['pinned'] = df['pinned'].apply(int_or_none)
+        df['num_crossposts'] = df['num_crossposts'].apply(int_or_none)
+        df["media"] = df['media'].apply(lambda x: isinstance(x, str))
+
+        df["popularity"] = df['# comments'] * df["upvote ratio"]
+        df = df.drop(["upvote ratio", "# comments"], axis=1)
+        plt.hist(df["popularity"], alpha=0.5, bins=20, edgecolor="black")
         plt.title("Histogram of popularity")
         plt.ylabel("Frequency")
         plt.xlabel("variable")
         a, b = 15, 30,
         plt.axvline(a, color='g', linestyle='dashed', linewidth=3)
         plt.axvline(b, color='g', linestyle='dashed', linewidth=3)
-        plt.show()
+        st.pyplot()
 
-        for i in prediction_df["popularity"]:
+
+        # pacos tree.
+
+        for i in df["popularity"]:
             if i < 15:
-                prediction_df["popularity"].replace(i, 0, inplace=True)
+                df["popularity"].replace(i, 0, inplace=True)
             if 15 < i < 30:
-                prediction_df["popularity"].replace(i, 1, inplace=True)
+                df["popularity"].replace(i, 1, inplace=True)
             if 30 < i:
-                prediction_df["popularity"].replace(i, 2, inplace=True)
+                df["popularity"].replace(i, 2, inplace=True)
 
-        prediction_df
-
+        from sklearn.tree import DecisionTreeClassifier  # Import Decision Tree Classifier
+        from sklearn.model_selection import train_test_split  # Import train_test_split function
+        from sklearn import metrics  # Import scikit-learn metrics module for accuracy calculation
+        # split dataset in features and target variable
+        feature_cols = ["month", "gilded", "total_awards_received", "pinned", "num_crossposts", "User Karma",
+                        "title_length", "media", "selftext", "Verified user"]
+        X = df[feature_cols]  # Features
+        y = df.popularity  # Target variable
+        # Split dataset into training set and test set
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3,random_state=1)  # 70% training and 30% test
+        # Create Decision Tree classifer object
+        clf = DecisionTreeClassifier()
+        # Train Decision Tree Classifer
+        clf = clf.fit(X_train, y_train)
+        # Predict the response for test dataset
+        y_pred = clf.predict(X_test)
+        # Model Accuracy, how often is the classifier correct?
+        print("Accuracy:", metrics.accuracy_score(y_test, y_pred))
+        from sklearn.tree import export_graphviz
+        from six import StringIO
+        # from sklearn.externals.six import StringIO
+        from IPython.display import Image
+        import pydotplus
+        dot_data = StringIO()
+        export_graphviz(clf, out_file=dot_data,
+                        filled=True, rounded=True,
+                        special_characters=True, feature_names=feature_cols, class_names=['0', '1', '2'])
+        graph = pydotplus.graph_from_dot_data(dot_data.getvalue())
+        st.image(graph, use_column_width=True)
 
 @st.cache(show_spinner=False)
 def get_excelbook(df, len_df):
