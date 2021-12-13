@@ -31,9 +31,14 @@ linear models
 
 def use_model(df, model_selected=None, error_metric=['mse']):
 
-    prediction_df = df.drop(['post id', 'author', 'name', 'year', 'day', 'media only', 'distinguised',
+    cols=['post id', 'author', 'name', 'year', 'day', 'media only', 'distinguised',
                              'ups', 'Topic', 'clicked', 'New_Title', 'Comments', 'Eng Title',
-                             'Eng Comments', 'Verified user'], axis=1)
+                             'Eng Comments', 'Verified user']
+
+
+    final_cols=[col for col in cols if col in df.columns]
+    prediction_df = df.drop(final_cols, axis=1)
+
 
     def int_or_none(x):
         if x == '':
@@ -57,7 +62,7 @@ def use_model(df, model_selected=None, error_metric=['mse']):
     dummy2 = dummy2.rename(columns={True: "Selftext"})
 
     prediction_df = prediction_df.drop(["media", "selftext"], 1)
-    prediction_df = pd.concat([prediction_df, dummy["Media"], dummy2["Selftext"]], axis=1)
+    #prediction_df = pd.concat([prediction_df, dummy["Media"], dummy2["Selftext"]], axis=1)
 
     # we only keep the topics that appear more than once
     # number_of_topics = prediction_df["Topic"].value_counts().apply(lambda x: x>2).value_counts()[1]
