@@ -219,10 +219,12 @@ def write():
         if local == 'Yes':
             if city_reddit == 'Paris':
                 df = pd.read_csv('df_paris.csv', keep_default_na=False); df = df.where(pd.notnull(df), None)
-            if city_reddit == 'Rome':
-                df = pd.read_csv('df_rome.csv', keep_default_na=False); df = df.where(pd.notnull(df), None)
+            if city_reddit == 'Dublin':
+                df = pd.read_csv('df_dublin.csv', keep_default_na=False); df = df.where(pd.notnull(df), None)
+                df['Eng Title'] = df['title'].astype(str); df['Eng Comments'] = df['Comments'].astype(str)
             if city_reddit == 'London':
                 df = pd.read_csv('df_london.csv', keep_default_na=False); df = df.where(pd.notnull(df), None)
+                df['Eng Title'] = df['title'].astype(str); df['Eng Comments'] = df['Comments'].astype(str)
         elif local == 'No':
             df = api_ricardi.get_df(sel_type, city_reddit)
 
