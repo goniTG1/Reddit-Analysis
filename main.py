@@ -140,10 +140,8 @@ def write():
                 df = pd.read_csv('df_paris.csv', keep_default_na=False); df = df.where(pd.notnull(df), None)
             if city_reddit == 'Dublin':
                 df = pd.read_csv('df_dublin.csv', keep_default_na=False); df = df.where(pd.notnull(df), None)
-                df['Eng Title'] = df['title'].astype(str); df['Eng Comments'] = df['Comments'].astype(str)
             if city_reddit == 'London':
                 df = pd.read_csv('df_london.csv', keep_default_na=False); df = df.where(pd.notnull(df), None)
-                df['Eng Title'] = df['title'].astype(str); df['Eng Comments'] = df['Comments'].astype(str)
         elif local == 'No':
             df = api_ricardi.get_df(sel_type, city_reddit)
 
@@ -219,12 +217,10 @@ def write():
         if local == 'Yes':
             if city_reddit == 'Paris':
                 df = pd.read_csv('df_paris.csv', keep_default_na=False); df = df.where(pd.notnull(df), None)
-            if city_reddit == 'Dublin':
-                df = pd.read_csv('df_dublin.csv', keep_default_na=False); df = df.where(pd.notnull(df), None)
-                df['Eng Title'] = df['title'].astype(str); df['Eng Comments'] = df['Comments'].astype(str)
+            if city_reddit == 'Rome':
+                df = pd.read_csv('df_rome.csv', keep_default_na=False); df = df.where(pd.notnull(df), None)
             if city_reddit == 'London':
                 df = pd.read_csv('df_london.csv', keep_default_na=False); df = df.where(pd.notnull(df), None)
-                df['Eng Title'] = df['title'].astype(str); df['Eng Comments'] = df['Comments'].astype(str)
         elif local == 'No':
             df = api_ricardi.get_df(sel_type, city_reddit)
 
@@ -247,25 +243,22 @@ def write():
         st.pyplot(fig)
 
     if selection == 'Machine Learning':
+        type_reddit = ['hot', 'top', 'rising', 'new']
+        sel_type = st.selectbox('Select the type', type_reddit)
+        city_reddit = city_reddit.split(',')[0]
+
         if local == 'Yes':
             if city_reddit.split(',')[0] == 'Paris':
                 df = pd.read_csv('df_paris.csv', keep_default_na=False);
                 df = df.where(pd.notnull(df), None)
-
             if city_reddit.split(',')[0] == 'Dublin':
                 df = pd.read_csv('df_dublin.csv', keep_default_na=False);
                 df = df.where(pd.notnull(df), None)
-                df['Eng Title'] = df['title'].astype(str)
-                df['Eng Comments'] = df['Comments'].astype(str)
-
             if city_reddit.split(',')[0] == 'London':
                 df = pd.read_csv('df_london.csv', keep_default_na=False);
                 df = df.where(pd.notnull(df), None)
-                df['Eng Title'] = df['title'].astype(str)
-                df['Eng Comments'] = df['Comments'].astype(str)
         elif local == 'No':
             df = api_ricardi.get_df(sel_type, city_reddit)
-
         df["media"] = df['media'].apply(lambda x: isinstance(x, dict))
         df["selftext"] = df['selftext'].apply(lambda x: len(x) > 0)
         df["title_length"] = df["title"].apply(lambda x: len(x.split()))
@@ -274,8 +267,8 @@ def write():
         dummy = dummy.rename(columns={True: "Media"})
         dummy2 = pd.get_dummies(df["selftext"])
         dummy2 = dummy2.rename(columns={True: "Selftext"})
-        dummy3 = pd.get_dummies(df["Verified user"])
-        dummy3 = dummy3.rename(columns={True: "Verified user"})
+        #dummy3 = pd.get_dummies(df["Verified user"])
+        #dummy3 = dummy3.rename(columns={True: "Verified user"})
 
         def int_or_none(x):
             if x == '':
@@ -291,6 +284,7 @@ def write():
 
         df["popularity"] = df['# comments'] * df["upvote ratio"]
         df = df.drop(["upvote ratio", "# comments"], axis=1)
+        plt.figure(figsize = (20, 6), dpi = 80)
         plt.hist(df["popularity"], alpha=0.5, bins=20, edgecolor="black")
         plt.title("Histogram of popularity")
         plt.ylabel("Frequency")
@@ -300,8 +294,6 @@ def write():
         plt.axvline(b, color='g', linestyle='dashed', linewidth=3)
         st.pyplot()
 
-
-        # pacos tree.
 
         for i in df["popularity"]:
             if i < 15:
@@ -317,6 +309,7 @@ def write():
         # split dataset in features and target variable
         feature_cols = ["month", "gilded", "total_awards_received", "pinned", "num_crossposts", "User Karma",
                         "title_length", "media", "selftext", "Verified user"]
+        feature_cols=[col for col in feature_cols if col in df.columns]
         X = df[feature_cols]  # Features
         y = df.popularity  # Target variable
         # Split dataset into training set and test set
@@ -328,7 +321,9 @@ def write():
         # Predict the response for test dataset
         y_pred = clf.predict(X_test)
         # Model Accuracy, how often is the classifier correct?
-        print("Accuracy:", metrics.accuracy_score(y_test, y_pred))
+        st.markdown('')
+        st.markdown(f'<b>Accuracy: {metrics.accuracy_score(y_test, y_pred)}</b>',unsafe_allow_html=True)
+        st.markdown('')
         from sklearn.tree import export_graphviz
         from six import StringIO
         # from sklearn.externals.six import StringIO
@@ -338,8 +333,8 @@ def write():
         export_graphviz(clf, out_file=dot_data,
                         filled=True, rounded=True,
                         special_characters=True, feature_names=feature_cols, class_names=['0', '1', '2'])
-        graph = pydotplus.graph_from_dot_data(dot_data.getvalue())
-        st.image(graph, use_column_width=True)
+        graph = pydotplus.graph_from_dot_data(dot_data.getvalue())  
+        st.image(graph.create_png())
 
 @st.cache(show_spinner=False)
 def get_excelbook(df, len_df):
