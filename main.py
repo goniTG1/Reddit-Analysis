@@ -140,8 +140,10 @@ def write():
                 df = pd.read_csv('df_paris.csv', keep_default_na=False); df = df.where(pd.notnull(df), None)
             if city_reddit == 'Dublin':
                 df = pd.read_csv('df_dublin.csv', keep_default_na=False); df = df.where(pd.notnull(df), None)
+                df['Eng Title'] = df['title'].astype(str); df['Eng Comments'] = df['Comments'].astype(str)
             if city_reddit == 'London':
                 df = pd.read_csv('df_london.csv', keep_default_na=False); df = df.where(pd.notnull(df), None)
+                df['Eng Title'] = df['title'].astype(str); df['Eng Comments'] = df['Comments'].astype(str)
         elif local == 'No':
             df = api_ricardi.get_df(sel_type, city_reddit)
 
@@ -217,10 +219,12 @@ def write():
         if local == 'Yes':
             if city_reddit == 'Paris':
                 df = pd.read_csv('df_paris.csv', keep_default_na=False); df = df.where(pd.notnull(df), None)
-            if city_reddit == 'Rome':
-                df = pd.read_csv('df_rome.csv', keep_default_na=False); df = df.where(pd.notnull(df), None)
+            if city_reddit == 'Dublin':
+                df = pd.read_csv('df_dublin.csv', keep_default_na=False); df = df.where(pd.notnull(df), None)
+                df['Eng Title'] = df['title'].astype(str); df['Eng Comments'] = df['Comments'].astype(str)
             if city_reddit == 'London':
                 df = pd.read_csv('df_london.csv', keep_default_na=False); df = df.where(pd.notnull(df), None)
+                df['Eng Title'] = df['title'].astype(str); df['Eng Comments'] = df['Comments'].astype(str)
         elif local == 'No':
             df = api_ricardi.get_df(sel_type, city_reddit)
 
@@ -248,15 +252,14 @@ def write():
         city_reddit = city_reddit.split(',')[0]
 
         if local == 'Yes':
-            if city_reddit.split(',')[0] == 'Paris':
-                df = pd.read_csv('df_paris.csv', keep_default_na=False);
-                df = df.where(pd.notnull(df), None)
-            if city_reddit.split(',')[0] == 'Dublin':
-                df = pd.read_csv('df_dublin.csv', keep_default_na=False);
-                df = df.where(pd.notnull(df), None)
-            if city_reddit.split(',')[0] == 'London':
-                df = pd.read_csv('df_london.csv', keep_default_na=False);
-                df = df.where(pd.notnull(df), None)
+            if city_reddit == 'Paris':
+                df = pd.read_csv('df_paris.csv', keep_default_na=False); df = df.where(pd.notnull(df), None)
+            if city_reddit == 'Dublin':
+                df = pd.read_csv('df_dublin.csv', keep_default_na=False); df = df.where(pd.notnull(df), None)
+                df['Eng Title'] = df['title'].astype(str); df['Eng Comments'] = df['Comments'].astype(str)
+            if city_reddit == 'London':
+                df = pd.read_csv('df_london.csv', keep_default_na=False); df = df.where(pd.notnull(df), None)
+                df['Eng Title'] = df['title'].astype(str); df['Eng Comments'] = df['Comments'].astype(str)
         elif local == 'No':
             df = api_ricardi.get_df(sel_type, city_reddit)
         df["media"] = df['media'].apply(lambda x: isinstance(x, dict))
@@ -294,47 +297,83 @@ def write():
         plt.axvline(b, color='g', linestyle='dashed', linewidth=3)
         st.pyplot()
 
+        # not implemented for Streamlit
+        graph_viz = False
+        if graph_viz:
+            for i in df["popularity"]:
+                if i < 15:
+                    df["popularity"].replace(i, 0, inplace=True)
+                if 15 < i < 30:
+                    df["popularity"].replace(i, 1, inplace=True)
+                if 30 < i:
+                    df["popularity"].replace(i, 2, inplace=True)
+            from sklearn.tree import DecisionTreeClassifier  # Import Decision Tree Classifier
+            from sklearn.model_selection import train_test_split  # Import train_test_split function
+            from sklearn import metrics  # Import scikit-learn metrics module for accuracy calculation
+            # split dataset in features and target variable
+            feature_cols = ["month", "gilded", "total_awards_received", "pinned", "num_crossposts", "User Karma",
+                            "title_length", "media", "selftext", "Verified user"]
+            feature_cols=[col for col in feature_cols if col in df.columns]
+            X = df[feature_cols]  # Features
+            y = df.popularity  # Target variable
+            # Split dataset into training set and test set
+            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3,random_state=1)  # 70% training and 30% test
+            # Create Decision Tree classifer object
+            clf = DecisionTreeClassifier()
+            # Train Decision Tree Classifer
+            clf = clf.fit(X_train, y_train)
+            # Predict the response for test dataset
+            y_pred = clf.predict(X_test)
+            # Model Accuracy, how often is the classifier correct?
+            st.markdown('')
+            st.markdown(f'<b>Accuracy: {metrics.accuracy_score(y_test, y_pred)}</b>',unsafe_allow_html=True)
+            st.markdown('')
+            print("Accuracy:", metrics.accuracy_score(y_test, y_pred))
+            from sklearn.tree import export_graphviz
+            from six import StringIO
+            # from sklearn.externals.six import StringIO
+            from IPython.display import Image
+            import pydotplus
+            dot_data = StringIO()
+            export_graphviz(clf, out_file=dot_data,
+                            filled=True, rounded=True,
+                            special_characters=True, feature_names=feature_cols, class_names=['0', '1', '2'])
+            graph = pydotplus.graph_from_dot_data(dot_data.getvalue())
+            st.image(graph.create_png())
 
-        for i in df["popularity"]:
-            if i < 15:
-                df["popularity"].replace(i, 0, inplace=True)
-            if 15 < i < 30:
-                df["popularity"].replace(i, 1, inplace=True)
-            if 30 < i:
-                df["popularity"].replace(i, 2, inplace=True)
+        else:
+            #st.image("Tree.png")
+            import base64
+            LOGO_IMAGE ="Tree.png"
+            st.markdown(
+                """
+                <style>
+                .container {
+                    display: flex;
+                }
+                .logo-text {
+                    font-weight:700 !important;
+                    font-size:50px !important;
+                    color: #f9a01b !important;
+                    padding-top: 75px !important;
+                }
+                .logo-img {
+                    float:center;
+                }
+                </style>
+                """,
+                unsafe_allow_html=True
+            )
+            st.markdown(
+                f"""
+                <div class="container">
+                    <img class="logo-img" src="data:image/png;base64,{base64.b64encode(open(LOGO_IMAGE, "rb").read()).decode()}">
+                    <p class="logo-text">Prediction of Decision Tree</p>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
 
-        from sklearn.tree import DecisionTreeClassifier  # Import Decision Tree Classifier
-        from sklearn.model_selection import train_test_split  # Import train_test_split function
-        from sklearn import metrics  # Import scikit-learn metrics module for accuracy calculation
-        # split dataset in features and target variable
-        feature_cols = ["month", "gilded", "total_awards_received", "pinned", "num_crossposts", "User Karma",
-                        "title_length", "media", "selftext", "Verified user"]
-        feature_cols=[col for col in feature_cols if col in df.columns]
-        X = df[feature_cols]  # Features
-        y = df.popularity  # Target variable
-        # Split dataset into training set and test set
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3,random_state=1)  # 70% training and 30% test
-        # Create Decision Tree classifer object
-        clf = DecisionTreeClassifier()
-        # Train Decision Tree Classifer
-        clf = clf.fit(X_train, y_train)
-        # Predict the response for test dataset
-        y_pred = clf.predict(X_test)
-        # Model Accuracy, how often is the classifier correct?
-        st.markdown('')
-        st.markdown(f'<b>Accuracy: {metrics.accuracy_score(y_test, y_pred)}</b>',unsafe_allow_html=True)
-        st.markdown('')
-        from sklearn.tree import export_graphviz
-        from six import StringIO
-        # from sklearn.externals.six import StringIO
-        from IPython.display import Image
-        import pydotplus
-        dot_data = StringIO()
-        export_graphviz(clf, out_file=dot_data,
-                        filled=True, rounded=True,
-                        special_characters=True, feature_names=feature_cols, class_names=['0', '1', '2'])
-        graph = pydotplus.graph_from_dot_data(dot_data.getvalue())  
-        st.image(graph.create_png())
 
 @st.cache(show_spinner=False)
 def get_excelbook(df, len_df):
@@ -344,4 +383,3 @@ def get_excelbook(df, len_df):
 if __name__ == "__main__":
     write()
 
-    
