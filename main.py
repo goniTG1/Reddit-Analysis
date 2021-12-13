@@ -140,8 +140,10 @@ def write():
                 df = pd.read_csv('df_paris.csv', keep_default_na=False); df = df.where(pd.notnull(df), None)
             if city_reddit == 'Dublin':
                 df = pd.read_csv('df_dublin.csv', keep_default_na=False); df = df.where(pd.notnull(df), None)
+                df['Eng Title'] = df['title'].astype(str); df['Eng Comments'] = df['Comments'].astype(str)
             if city_reddit == 'London':
                 df = pd.read_csv('df_london.csv', keep_default_na=False); df = df.where(pd.notnull(df), None)
+                df['Eng Title'] = df['title'].astype(str); df['Eng Comments'] = df['Comments'].astype(str)
         elif local == 'No':
             df = api_ricardi.get_df(sel_type, city_reddit)
 
@@ -243,19 +245,25 @@ def write():
         st.pyplot(fig)
 
     if selection == 'Machine Learning':
-
         if local == 'Yes':
             if city_reddit.split(',')[0] == 'Paris':
                 df = pd.read_csv('df_paris.csv', keep_default_na=False);
                 df = df.where(pd.notnull(df), None)
+
             if city_reddit.split(',')[0] == 'Dublin':
                 df = pd.read_csv('df_dublin.csv', keep_default_na=False);
                 df = df.where(pd.notnull(df), None)
+                df['Eng Title'] = df['title'].astype(str)
+                df['Eng Comments'] = df['Comments'].astype(str)
+
             if city_reddit.split(',')[0] == 'London':
                 df = pd.read_csv('df_london.csv', keep_default_na=False);
                 df = df.where(pd.notnull(df), None)
+                df['Eng Title'] = df['title'].astype(str)
+                df['Eng Comments'] = df['Comments'].astype(str)
         elif local == 'No':
             df = api_ricardi.get_df(sel_type, city_reddit)
+
         df["media"] = df['media'].apply(lambda x: isinstance(x, dict))
         df["selftext"] = df['selftext'].apply(lambda x: len(x) > 0)
         df["title_length"] = df["title"].apply(lambda x: len(x.split()))
